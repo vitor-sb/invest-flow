@@ -1,0 +1,21 @@
+# --- Dependências para o Executor e Metastore ---
+celery>=5.2.3
+redis>=4.2.0
+psycopg2-binary
+
+apache-airflow-providers-celery
+apache-airflow-providers-fab
+
+# --- Provedores para o Pipeline de Dados ---
+# apache-airflow-providers-airbyte
+apache-airflow-providers-postgres
+# airflow-dbt-python
+
+# --- Dependências do Notebook de Scraping ---
+selenium
+pandas
+numpy
+# Usado para carregar dados no postgres com pandas
+sqlalchemy
+# Usado para salvar arquivos intermediários
+pyarrow
