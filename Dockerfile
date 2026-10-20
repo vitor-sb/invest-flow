@@ -12,3 +12,5 @@ USER airflow
 
 COPY requirements.txt /opt/airflow/requirements.txt
 RUN pip install --no-cache-dir -r /opt/airflow/requirements.txt
+# DAGs embutidas na imagem: com KubernetesExecutor cada task é um pod novo, sem o bind mount do compose
+COPY dags/ /opt/airflow/dags/

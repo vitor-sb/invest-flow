@@ -5,6 +5,8 @@ psycopg2-binary
 
 apache-airflow-providers-celery
 apache-airflow-providers-fab
+# Executor Kubernetes (cada task vira um pod)
+apache-airflow-providers-cncf-kubernetes
 
 # --- Provedores para o Pipeline de Dados ---
 # apache-airflow-providers-airbyte
