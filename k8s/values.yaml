@@ -1,0 +1,48 @@
+# Helm chart oficial do Airflow (chart 1.19.0 = Airflow 3.1.x) com KubernetesExecutor.
+executor: KubernetesExecutor
+
+# Imagem local (Chromium + deps de scraping + DAGs), importada no k3d
+defaultAirflowRepository: airflow-invest-flow
+defaultAirflowTag: k8s
+images:
+  airflow:
+    pullPolicy: IfNotPresent
+
+# Sem fila nem workers fixos: cada task vira um pod
+redis: { enabled: false }
+statsd: { enabled: false }
+
+# ponytail: Postgres de metadados do chart com senha padrão (postgres/postgres); trocar se sair do ambiente local
+createUserJob:
+  defaultUser:
+    username: admin
+    password: admin
+
+env:
+  - { name: AIRFLOW__CORE__LOAD_EXAMPLES, value: "False" }
+
+# Conexão da DAG (PostgresHook 'postgres_data_warehouse'); a URI com senha vem do Secret
+secret:
+  - envName: AIRFLOW_CONN_POSTGRES_DATA_WAREHOUSE
+    secretName: invest-flow-env
+    secretKey: WAREHOUSE_CONN
+
+volumes:
+  - name: data
+    persistentVolumeClaim: { claimName: airflow-data }
+volumeMounts:
+  - { name: data, mountPath: /opt/airflow/data }
+
+# KubernetesExecutor precisa de logs fora do pod da task.
+# PVC próprio (data.yaml): o do chart pede RWX e o local-path do k3d só faz RWO
+logs:
+  persistence:
+    enabled: true
+    existingClaim: airflow-logs
+
+ingress:
+  apiServer:
+    enabled: true
+    hosts: [{ name: airflow.localhost }]
+    ingressClassName: traefik
+    pathType: Prefix

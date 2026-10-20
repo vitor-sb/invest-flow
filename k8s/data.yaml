@@ -1,0 +1,64 @@
+# Área de dados compartilhada entre as tasks: a DAG passa CSV/Parquet pelo disco (/opt/airflow/data),
+# e com KubernetesExecutor cada task é um pod diferente.
+# ponytail: RWO só funciona porque o k3d tem 1 nó; em multi-nó usar RWX ou passar dados via XCom/Postgres
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: airflow-data
+  namespace: invest-flow
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 1Gi } }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: airflow-logs
+  namespace: invest-flow
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 1Gi } }
+---
+# Equivalente ao data_postgres do compose: destino da carga (conexão postgres_data_warehouse)
+apiVersion: v1
+kind: Service
+metadata:
+  name: warehouse
+  namespace: invest-flow
+spec:
+  selector: { app: warehouse }
+  ports: [{ port: 5432 }]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: warehouse
+  namespace: invest-flow
+spec:
+  serviceName: warehouse
+  selector:
+    matchLabels: { app: warehouse }
+  template:
+    metadata:
+      labels: { app: warehouse }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          ports: [{ containerPort: 5432 }]
+          env:
+            - { name: POSTGRES_DB, value: data_warehouse }
+            - { name: POSTGRES_USER, value: airflow }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: invest-flow-env, key: WAREHOUSE_PASSWORD } }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          readinessProbe:
+            exec: { command: [sh, -c, 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"'] }
+            periodSeconds: 10
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 1Gi } }
